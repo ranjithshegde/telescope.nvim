@@ -40,6 +40,7 @@ builtin.git_branches = require('telescope.builtin.git').branches
 builtin.git_status = require('telescope.builtin.git').status
 
 builtin.builtin = require('telescope.builtin.internal').builtin
+
 builtin.planets = require('telescope.builtin.internal').planets
 builtin.symbols = require('telescope.builtin.internal').symbols
 builtin.commands = require('telescope.builtin.internal').commands
@@ -47,6 +48,7 @@ builtin.quickfix = require('telescope.builtin.internal').quickfix
 builtin.loclist = require('telescope.builtin.internal').loclist
 builtin.oldfiles = require('telescope.builtin.internal').oldfiles
 builtin.command_history = require('telescope.builtin.internal').command_history
+builtin.search_history = require('telescope.builtin.internal').search_history
 builtin.vim_options = require('telescope.builtin.internal').vim_options
 builtin.help_tags = require('telescope.builtin.internal').help_tags
 builtin.man_pages = require('telescope.builtin.internal').man_pages
@@ -60,14 +62,17 @@ builtin.filetypes = require('telescope.builtin.internal').filetypes
 builtin.highlights = require('telescope.builtin.internal').highlights
 builtin.autocommands = require('telescope.builtin.internal').autocommands
 builtin.spell_suggest = require('telescope.builtin.internal').spell_suggest
+builtin.tagstack = require('telescope.builtin.internal').tagstack
 
 builtin.lsp_references = require('telescope.builtin.lsp').references
 builtin.lsp_definitions = require('telescope.builtin.lsp').definitions
+builtin.lsp_implementations = require('telescope.builtin.lsp').implementations
 builtin.lsp_document_symbols = require('telescope.builtin.lsp').document_symbols
 builtin.lsp_code_actions = require('telescope.builtin.lsp').code_actions
 builtin.lsp_document_diagnostics = require('telescope.builtin.lsp').diagnostics
 builtin.lsp_workspace_diagnostics = require('telescope.builtin.lsp').workspace_diagnostics
 builtin.lsp_range_code_actions = require('telescope.builtin.lsp').range_code_actions
 builtin.lsp_workspace_symbols = require('telescope.builtin.lsp').workspace_symbols
+builtin.lsp_dynamic_workspace_symbols = require('telescope.builtin.lsp').dynamic_workspace_symbols
 
 return builtin

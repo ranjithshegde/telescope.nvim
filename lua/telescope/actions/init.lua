@@ -196,7 +196,7 @@ function actions.close_pum(_)
   end
 end
 
-local do_close = function(prompt_bufnr, keepinsert)
+actions._close = function(prompt_bufnr, keepinsert)
   local picker = action_state.get_current_picker(prompt_bufnr)
   local prompt_win = state.get_status(prompt_bufnr).prompt_win
   local original_win_id = picker.original_win_id
@@ -217,7 +217,13 @@ local do_close = function(prompt_bufnr, keepinsert)
 end
 
 function actions.close(prompt_bufnr)
-  do_close(prompt_bufnr, false)
+  actions._close(prompt_bufnr, false)
+end
+
+actions.edit_command_line = function(prompt_bufnr)
+  local entry = action_state.get_selected_entry(prompt_bufnr)
+  actions.close(prompt_bufnr)
+  a.nvim_feedkeys(a.nvim_replace_termcodes(":" .. entry.value , true, false, true), "t", true)
 end
 
 actions.set_command_line = function(prompt_bufnr)
@@ -226,6 +232,19 @@ actions.set_command_line = function(prompt_bufnr)
   actions.close(prompt_bufnr)
   vim.fn.histadd("cmd", entry.value)
   vim.cmd(entry.value)
+end
+
+actions.edit_search_line = function(prompt_bufnr)
+  local entry = action_state.get_selected_entry(prompt_bufnr)
+  actions.close(prompt_bufnr)
+  a.nvim_feedkeys(a.nvim_replace_termcodes("/" .. entry.value , true, false, true), "t", true)
+end
+
+actions.set_search_line = function(prompt_bufnr)
+  local entry = action_state.get_selected_entry(prompt_bufnr)
+
+  actions.close(prompt_bufnr)
+  a.nvim_feedkeys(a.nvim_replace_termcodes("/" .. entry.value .. "<CR>", true, false, true), "t", true)
 end
 
 actions.edit_register = function(prompt_bufnr)
@@ -270,7 +289,7 @@ end
 actions.run_builtin = function(prompt_bufnr)
   local entry = action_state.get_selected_entry(prompt_bufnr)
 
-  do_close(prompt_bufnr, true)
+actions._close(prompt_bufnr, true)
   require('telescope.builtin')[entry.text]()
 end
 
@@ -291,6 +310,38 @@ actions.insert_value = function(prompt_bufnr)
   return entry.value
 end
 
+--- Create and checkout a new git branch if it doesn't already exist
+---@param prompt_bufnr number: The prompt bufnr
+actions.git_create_branch = function(prompt_bufnr)
+  local cwd = action_state.get_current_picker(prompt_bufnr).cwd
+  local new_branch = action_state.get_current_line()
+
+  if new_branch == "" then
+    print('Please enter the name of the new branch to create')
+  else
+    local confirmation = vim.fn.input(string.format('Create new branch "%s"? [y/n]: ', new_branch))
+    if string.len(confirmation) == 0 or string.sub(string.lower(confirmation), 0, 1) ~= 'y' then
+      print(string.format('Didn\'t create branch "%s"', new_branch))
+      return
+    end
+
+    actions.close(prompt_bufnr)
+
+    local _, ret, stderr = utils.get_os_command_output({ 'git', 'checkout', '-b', new_branch }, cwd)
+    if ret == 0 then
+      print(string.format('Switched to a new branch: %s', new_branch))
+    else
+      print(string.format(
+        'Error when creating new branch: %s Git returned "%s"',
+        new_branch,
+        table.concat(stderr, '  ')
+      ))
+    end
+  end
+end
+
+--- Checkout an existing git branch
+---@param prompt_bufnr number: The prompt bufnr
 actions.git_checkout = function(prompt_bufnr)
   local cwd = action_state.get_current_picker(prompt_bufnr).cwd
   local selection = action_state.get_selected_entry()
@@ -307,6 +358,8 @@ actions.git_checkout = function(prompt_bufnr)
   end
 end
 
+--- Tell git to track the currently selected remote branch in Telescope
+---@param prompt_bufnr number: The prompt bufnr
 actions.git_track_branch = function(prompt_bufnr)
   local cwd = action_state.get_current_picker(prompt_bufnr).cwd
   local selection = action_state.get_selected_entry()
@@ -323,6 +376,9 @@ actions.git_track_branch = function(prompt_bufnr)
   end
 end
 
+-- TODO: add this function header back once the treesitter max-query bug is resolved
+-- Delete the currently selected branch
+-- @param prompt_bufnr number: The prompt bufnr
 actions.git_delete_branch = function(prompt_bufnr)
   local cwd = action_state.get_current_picker(prompt_bufnr).cwd
   local selection = action_state.get_selected_entry()
@@ -343,11 +399,14 @@ actions.git_delete_branch = function(prompt_bufnr)
   end
 end
 
+-- TODO: add this function header back once the treesitter max-query bug is resolved
+-- Rebase to selected git branch
+-- @param prompt_bufnr number: The prompt bufnr
 actions.git_rebase_branch = function(prompt_bufnr)
   local cwd = action_state.get_current_picker(prompt_bufnr).cwd
   local selection = action_state.get_selected_entry()
 
-  local confirmation = vim.fn.input('Do you really wanna delete branch ' .. selection.value .. '? [Y/n] ')
+  local confirmation = vim.fn.input('Do you really wanna rebase branch ' .. selection.value .. '? [Y/n] ')
   if confirmation ~= '' and string.lower(confirmation) ~= 'y' then return end
 
   actions.close(prompt_bufnr)
@@ -363,6 +422,9 @@ actions.git_rebase_branch = function(prompt_bufnr)
   end
 end
 
+-- TODO: add this function header back once the treesitter max-query bug is resolved
+-- Stage/unstage selected file
+-- @param prompt_bufnr number: The prompt bufnr
 actions.git_staging_toggle = function(prompt_bufnr)
   local cwd = action_state.get_current_picker(prompt_bufnr).cwd
   local selection = action_state.get_selected_entry()
