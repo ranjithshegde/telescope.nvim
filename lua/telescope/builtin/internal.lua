@@ -21,6 +21,7 @@ local internal = {}
 internal.builtin = function(opts)
   opts.hide_filename = utils.get_default(opts.hide_filename, true)
   opts.ignore_filename = utils.get_default(opts.ignore_filename, true)
+  opts.include_extensions = utils.get_default(opts.include_extensions, false)
 
   local objs = {}
 
@@ -32,8 +33,23 @@ internal.builtin = function(opts)
     })
   end
 
+  local title = 'Telescope Builtin'
+
+  if opts.include_extensions then
+    title = 'Telescope Pickers'
+    for ext, funcs in pairs(require'telescope'.extensions) do
+      for func_name, func_obj in pairs(funcs) do
+        local debug_info = debug.getinfo(func_obj)
+        table.insert(objs, {
+          filename = string.sub(debug_info.source, 2),
+          text = string.format("%s : %s", ext, func_name),
+        })
+      end
+    end
+  end
+
   pickers.new(opts, {
-    prompt_title = 'Telescope Builtin',
+    prompt_title = title,
     finder    = finders.new_table {
       results = objs,
       entry_maker = function(entry)
@@ -251,6 +267,7 @@ internal.oldfiles = function(opts)
 
   if opts.cwd_only then
     local cwd = vim.loop.cwd()
+    cwd = cwd:gsub([[\]],[[\\]])
     results = vim.tbl_filter(function(file)
       return vim.fn.matchstrpos(file, cwd)[2] ~= -1
     end, results)
@@ -562,13 +579,14 @@ internal.buffers = function(opts)
     if 1 ~= vim.fn.buflisted(b) then
         return false
     end
-    if not opts.show_all_buffers and not vim.api.nvim_buf_is_loaded(b) then
+    -- only hide unloaded buffers if opts.show_all_buffers is false, keep them listed if true or nil
+    if opts.show_all_buffers == false and not vim.api.nvim_buf_is_loaded(b) then
       return false
     end
     if opts.ignore_current_buffer and b == vim.api.nvim_get_current_buf() then
       return false
     end
-    if opts.only_cwd and not string.find(vim.api.nvim_buf_get_name(b), vim.loop.cwd()) then
+    if opts.only_cwd and not string.find(vim.api.nvim_buf_get_name(b), vim.loop.cwd(), 1, true) then
       return false
     end
     return true
@@ -916,16 +934,37 @@ internal.tagstack = function(opts)
   end
 
   pickers.new(opts, {
-      prompt_title = 'TagStack',
-      finder = finders.new_table {
-        results = tags,
-        entry_maker = make_entry.gen_from_quickfix(opts),
-      },
-      previewer = previewers.vim_buffer_qflist.new(opts),
-      sorter = conf.generic_sorter(opts),
-    }):find()
+    prompt_title = 'TagStack',
+    finder = finders.new_table {
+      results = tags,
+      entry_maker = make_entry.gen_from_quickfix(opts),
+    },
+    previewer = conf.qflist_previewer(opts),
+    sorter = conf.generic_sorter(opts),
+  }):find()
 end
 
+internal.jumplist = function(opts)
+  opts = opts or {}
+  local jumplist = vim.fn.getjumplist()[1]
+
+  -- reverse the list
+  local sorted_jumplist = {}
+  for i = #jumplist, 1, -1 do
+    jumplist[i].text = ''
+    table.insert(sorted_jumplist, jumplist[i])
+  end
+
+  pickers.new(opts, {
+    prompt_title = 'Jumplist',
+    finder = finders.new_table {
+      results = sorted_jumplist,
+      entry_maker = make_entry.gen_from_jumplist(opts),
+    },
+    previewer = conf.qflist_previewer(opts),
+    sorter = conf.generic_sorter(opts),
+  }):find()
+end
 
 local function apply_checks(mod)
   for k, v in pairs(mod) do
